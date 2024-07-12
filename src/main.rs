@@ -17,7 +17,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if let Some(repositories) = res.repositories {
         for repo in repositories {
-            println!("Repository: {}", repo.repository_name.unwrap_or_default());
+            let repo_name = repo.repository_name.unwrap_or_default();
+            println!("Repository: {}", repo_name);
+
+            // Listing docker images
+            let images = client
+                .list_images()
+                .repository_name(&repo_name)
+                .send()
+                .await?;
+
+            if let Some(image_ids) = images.image_ids {
+                for image_id in image_ids {
+                    println!(" Image: {:?}", image_id.image_tag.unwrap_or_default());
+                }
+            } else {
+                println!(" No images found in repository");
+            }
         }
     } else {
         println!("No repositories found");
