@@ -1,7 +1,7 @@
 use structopt::StructOpt;
 use aws_config::BehaviorVersion;
 use aws_sdk_ecr::Client;
-use std::io::{self, Write};
+use inquire::Select;
 
 #[derive(StructOpt)]
 struct Cli {}
@@ -17,31 +17,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let res = client.describe_repositories().send().await?;
 
     if let Some(repositories) = res.repositories {
-        println!("ECR Repositories:");
-        for (index, repo) in repositories.iter().enumerate() {
-            println!("{}. {}", index + 1, repo.repository_name.as_deref().unwrap_or("Unknown"));
-        }
+        let repo_names: Vec<&str> = repositories.iter()
+            .map(|repo| repo.repository_name.as_deref().unwrap_or("Unknown"))
+            .collect();
 
         // Prompt the user to select a repository
-        print!("Select a repository by number: ");
-        io::stdout().flush()?;
-        let mut input = String::new();
-        io::stdin().read_line(&mut input)?;
-        let selected_index: usize = input.trim().parse()?;
-
-        if selected_index == 0 || selected_index > repositories.len() {
-            println!("Invalid selection");
-            return Ok(());
-        }
-
-        let selected_repo = &repositories[selected_index - 1];
-        let repo_name = selected_repo.repository_name.as_deref().unwrap_or("Unknown");
+        let selected_repo_name = Select::new("Select a repository:", repo_names)
+            .prompt()
+            .unwrap();
 
         // List images in the selected repository
-        println!("Selected repository: {}", repo_name);
+        println!("Selected repository: {}", selected_repo_name);
         let images_resp = client
             .list_images()
-            .repository_name(repo_name)
+            .repository_name(selected_repo_name)
             .send()
             .await?;
 
@@ -49,7 +38,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             if image_ids.is_empty() {
                 println!("No images found in repository");
             } else {
-                println!("Images in repository '{}':", repo_name);
+                println!("Images in repository '{}':", selected_repo_name);
                 for image_id in image_ids {
                     println!("  Image: {:?}", image_id.image_tag.as_deref().unwrap_or("No tag"));
                 }
