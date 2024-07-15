@@ -2,6 +2,11 @@
 include .env
 export $(shell sed 's/=.*//' .env)
 
+# Open documentation with rustdoc
+.PHONY: doc
+doc:
+	cargo doc --no-deps --open
+
 # AWS ECRリポジトリURIを指定
 ECR_URI := $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
 
