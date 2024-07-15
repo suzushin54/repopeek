@@ -1,54 +1,47 @@
-use structopt::StructOpt;
-use aws_config::BehaviorVersion;
-use aws_sdk_ecr::Client;
-use inquire::Select;
+mod aws_client;
+mod ecr;
 
+use structopt::StructOpt;
+use inquire::Select;
+use crate::aws_client::setup_aws_client;
+use ecr::{list_repositories, list_images_in_repository};
+
+
+/// Command-line interface for the application
 #[derive(StructOpt)]
 struct Cli {}
 
+/// Main function
+///
+/// This function sets up the AWS client, lists the repositories,
+/// prompts the user to select a repository, and then lists the images in the selected repository.
+///
+/// # Returns
+///
+/// Returns a Result with the success or error status of the operation.
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _args = Cli::from_args();
 
     // Setup AWS Client
-    let config = aws_config::load_defaults(BehaviorVersion::latest()).await;
-    let client = Client::new(&config);
+    let client = setup_aws_client().await?;
 
-    let res = client.describe_repositories().send().await?;
-
-    if let Some(repositories) = res.repositories {
-        let repo_names: Vec<&str> = repositories.iter()
-            .map(|repo| repo.repository_name.as_deref().unwrap_or("Unknown"))
-            .collect();
-
-        // Prompt the user to select a repository
-        let selected_repo_name = Select::new("Select a repository:", repo_names)
-            .prompt()
-            .unwrap();
-
-        // List images in the selected repository
-        println!("Selected repository: {}", selected_repo_name);
-        let images_resp = client
-            .list_images()
-            .repository_name(selected_repo_name)
-            .send()
-            .await?;
-
-        if let Some(image_ids) = images_resp.image_ids {
-            if image_ids.is_empty() {
-                println!("No images found in repository");
-            } else {
-                println!("Images in repository '{}':", selected_repo_name);
-                for image_id in image_ids {
-                    println!("  Image: {:?}", image_id.image_tag.as_deref().unwrap_or("No tag"));
-                }
-            }
-        } else {
-            println!("No images found in repository");
-        }
-    } else {
+    let repositories = list_repositories(&client).await?;
+    if repositories.is_empty() {
         println!("No repositories found");
+        return Ok(());
     }
+
+    let repo_names: Vec<&str> = repositories.iter()
+        .map(|s| s.as_str()).collect();
+
+    // Prompt the user to select a repository
+    let selected_repo_name = Select::new("Select a repository:", repo_names)
+        .prompt()
+        .unwrap();
+
+    // List images in the selected repository
+    list_images_in_repository(&client, selected_repo_name).await?;
 
     Ok(())
 }
