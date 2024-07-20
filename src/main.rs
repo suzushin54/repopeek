@@ -41,7 +41,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap();
 
     // List images in the selected repository
-    list_images_in_repository(&client, selected_repo_name).await?;
+    let images = list_images_in_repository(&client, selected_repo_name).await?;
+    if images.is_empty() {
+        println!("No images found in repository");
+        return Ok(());
+    }
+
+    // Prompt the user to select an image
+    let selected_image_tag = match Select::new("Select an image to pull:", images).prompt() {
+        Ok(tag) => tag,
+        Err(_) => {
+            println!("Failed to select an image");
+            return Ok(());
+        }
+    };
+
+    // Pull the selected image
+    let docker_pull_command = format!("docker pull {}:{}", selected_repo_name, selected_image_tag);
+    println!("Running command: {}", docker_pull_command);
+    std::process::Command::new("sh")
+        .arg("-c")
+        .arg(docker_pull_command)
+        .status()
+        .expect("failed to execute docker pull command");
 
     Ok(())
 }

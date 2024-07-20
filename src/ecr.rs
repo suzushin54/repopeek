@@ -29,8 +29,8 @@ pub async fn list_repositories(client: &Client) -> Result<Vec<String>, Box<dyn s
 ///
 /// # Returns
 ///
-/// A result indicating success or failure. If successful, the function prints the image tags.
-pub async fn list_images_in_repository(client: &Client, repo_name: &str) -> Result<(), Box<dyn std::error::Error>> {
+/// Returns a Result with a vector of image tags or an error
+pub async fn list_images_in_repository(client: &Client, repo_name: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
     println!("Selected repository {}", repo_name);
 
     let images = client
@@ -40,23 +40,11 @@ pub async fn list_images_in_repository(client: &Client, repo_name: &str) -> Resu
         .await?;
 
     let image_ids = match images.image_ids {
-        Some(ids) => ids,
-        None => {
-            println!("No images found in repository");
-            return Ok(());
-        }
+        Some(ids) => ids.into_iter()
+            .map(|image_id| image_id.image_tag.unwrap_or("No tags".to_string()))
+            .collect(),
+        None => vec![],
     };
 
-    if image_ids.is_empty() {
-        println!("No images found in repository");
-        return Ok(());
-    }
-
-    println!("Images in repository '{}':", repo_name);
-
-    for image_id in image_ids {
-        println!("  Image: {:?}", image_id.image_tag.as_deref().unwrap_or("No tags"));
-    }
-
-    Ok(())
+    Ok(image_ids)
 }
