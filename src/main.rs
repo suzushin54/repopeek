@@ -1,9 +1,10 @@
-mod aws_client;
 mod ecr;
+mod aws_profile;
+mod aws_client;
 
 use structopt::StructOpt;
 use inquire::Select;
-use crate::aws_client::setup_aws_client;
+use crate::aws_client::setup_aws_client_with_user_selection;
 use ecr::{list_repositories, list_images_in_repository};
 
 
@@ -24,7 +25,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _args = Cli::from_args();
 
     // Setup AWS Client
-    let client = setup_aws_client().await?;
+    let client = setup_aws_client_with_user_selection().await?;
 
     let repositories = list_repositories(&client).await?;
     if repositories.is_empty() {
