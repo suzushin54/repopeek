@@ -14,7 +14,7 @@ use crate::aws_profile::get_profile_names;
 ///
 /// Returns a Result with the AWS client or an error
 pub async fn setup_aws_client(profile: &str) -> Result<Client, Box<dyn std::error::Error>> {
-    let config = aws_config::from_env()
+    let config = aws_config::defaults(BehaviorVersion::latest())
         .region(aws_config::Region::new("ap-northeast-1"))
         .profile_name(profile)
         .load()
