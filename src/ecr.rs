@@ -1,4 +1,6 @@
 use aws_sdk_ecr::Client;
+use aws_sdk_ecr::Error;
+use aws_sdk_ecr::types::ImageDetail;
 
 /// Lists all repositories in the ECR
 ///
@@ -47,4 +49,13 @@ pub async fn list_images_in_repository(client: &Client, repo_name: &str) -> Resu
     };
 
     Ok(image_ids)
+}
+
+pub async fn describe_images(client: &Client, repo_name: &str) -> Result<Vec<ImageDetail>, Error> {
+    let result = client.describe_images()
+        .repository_name(repo_name)
+        .send()
+        .await?;
+
+    Ok(result.image_details().to_vec())
 }

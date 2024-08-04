@@ -48,14 +48,42 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
-    // Prompt the user to select an image
-    let selected_image_tag = match Select::new("Select an image to pull:", images).prompt() {
-        Ok(tag) => tag,
-        Err(_) => {
-            println!("Failed to select an image");
+    // Fetch image details
+    let image_details = match ecr::describe_images(&client, selected_repo_name).await {
+        Ok(details) => details,
+        Err(err) => {
+            eprintln!("Error describing images: {:?}", err);
             return Ok(());
         }
     };
+
+    let mut image_options = Vec::new();
+    for detail in &image_details {
+        let pushed_at = detail.image_pushed_at();
+        let pushed_at_str = pushed_at.map_or_else(
+            || "N/A".to_string(),
+            |dt| dt.to_string()
+        );
+
+        let size = detail.image_size_in_bytes().unwrap_or_default();
+        let digest = detail.image_digest().unwrap_or_default();
+        let option = format!(
+            "{}\t{}\t{} MB\t{}",
+            detail.image_tags.clone().unwrap_or_default().first().cloned().unwrap_or_default(),
+            pushed_at_str,
+            size / 1024 / 1024,
+            digest
+        );
+        image_options.push(option);
+    }
+
+    if image_options.is_empty() {
+        println!("No images found in repository");
+        return Ok(());
+    }
+
+    let selected_image = Select::new("Select an image to pull:", image_options).prompt()?;
+    let selected_image_tag = selected_image.split('\t').next().unwrap().to_string();
 
     // Pull the selected image
     let docker_pull_command = format!("docker pull {}:{}", selected_repo_name, selected_image_tag);
