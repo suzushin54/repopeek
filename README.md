@@ -1,4 +1,4 @@
-# ECR Image Browser
+# repopeek 🔍 - Simple ECR Image Browser
 
 Simple CLI tool written in Rust to list and pull Docker images stored in AWS ECR repositories. 
 
@@ -13,8 +13,8 @@ Simple CLI tool written in Rust to list and pull Docker images stored in AWS ECR
 
 2. **Clone the repository**:
     ```sh
-    git clone https://github.com/suzushin54/ecr-image-browser.git
-    cd ecr-image-browser
+    git clone https://github.com/suzushin54/repopeek.git
+    cd repopeek
     ```
 
 3. **Install dependencies**:
@@ -58,4 +58,3 @@ Selected repository nginx
 > alpine        2024-07-13T09:36:41Z    16 MB   sha256:9459849d2fcb182dc760396be39c55459f5ea4899f18cb25433c514ee5ad582c
 [↑↓ to move, enter to select, type to filter]
 ```
-
