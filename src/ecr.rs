@@ -1,6 +1,7 @@
 use aws_sdk_ecr::Client;
 use aws_sdk_ecr::Error;
 use aws_sdk_ecr::types::ImageDetail;
+use std::process::Command;
 
 /// Lists all repositories in the ECR
 ///
@@ -58,4 +59,56 @@ pub async fn describe_images(client: &Client, repo_name: &str) -> Result<Vec<Ima
         .await?;
 
     Ok(result.image_details().to_vec())
+}
+
+/// Authenticates with AWS ECR
+///
+/// # Arguments
+///
+/// * `client` - The AWS ECR client
+///
+/// # Returns
+///
+/// Returns a Result indicating success or failure
+pub async fn authenticate_with_ecr(client: &Client) -> Result<(), Box<dyn std::error::Error>> {
+    println!("Starting ECR authentication process...");
+
+    let region = client.config().region().ok_or("Region not found")?.to_string();
+    println!("Using region: {}", region);
+
+    let account_id = get_account_id(client).await?;
+    println!("Retrieved account ID: {}", account_id);
+
+    let account_url = format!("{}.dkr.ecr.{}.amazonaws.com", account_id, region);
+
+    let status = Command::new("sh")
+        .arg("-c")
+        .arg(format!(
+            "AWS_PROFILE=default aws ecr get-login-password --region {} | docker login --username AWS --password-stdin {}",
+            region, account_url
+        ))
+        .status()?;
+
+    if !status.success() {
+        return Err("Failed to authenticate with ECR".into());
+    }
+
+    println!("Successfully authenticated with ECR");
+    Ok(())
+}
+
+/// Gets the AWS account ID
+///
+/// # Arguments
+///
+/// * `client` - The AWS ECR client
+///
+/// # Returns
+///
+/// Returns a Result with the account ID or an error
+async fn get_account_id(client: &Client) -> Result<String, Box<dyn std::error::Error>> {
+    let result = client.describe_registry().send().await?;
+    result.registry_id()
+        .map(String::from)
+        .ok_or_else(|| "Failed to retrieve account ID".into())
 }

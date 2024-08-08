@@ -27,6 +27,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Setup AWS Client
     let client = setup_aws_client_with_user_selection().await?;
 
+    // Docker login for private repository
+    ecr::authenticate_with_ecr(&client).await?;
+
     let repositories = list_repositories(&client).await?;
     if repositories.is_empty() {
         println!("No repositories found");
