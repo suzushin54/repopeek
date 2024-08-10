@@ -27,8 +27,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Setup AWS Client
     let client = setup_aws_client_with_user_selection().await?;
 
+    // Get AWS account ID and region
+    let account_id = aws_client::get_account_id(&client).await?;
+    let region = aws_client::get_region(&client)?;
+
     // Docker login for private repository
-    ecr::authenticate_with_ecr(&client).await?;
+    ecr::authenticate_with_ecr(&account_id, &region).await?;
 
     let repositories = list_repositories(&client).await?;
     if repositories.is_empty() {
@@ -89,7 +93,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let selected_image_tag = selected_image.split('\t').next().unwrap().to_string();
 
     // Pull the selected image
-    let docker_pull_command = format!("docker pull {}:{}", selected_repo_name, selected_image_tag);
+    let docker_pull_command = format!(
+        "docker pull {}.dkr.ecr.{}.amazonaws.com/{}:{}",
+        account_id, region, selected_repo_name, selected_image_tag
+    );
+
     println!("Running command: {}", docker_pull_command);
     std::process::Command::new("sh")
         .arg("-c")

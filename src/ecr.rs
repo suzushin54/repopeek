@@ -65,19 +65,14 @@ pub async fn describe_images(client: &Client, repo_name: &str) -> Result<Vec<Ima
 ///
 /// # Arguments
 ///
-/// * `client` - The AWS ECR client
+/// * `account_id` - The AWS account ID
+/// * `region` - The AWS region
 ///
 /// # Returns
 ///
 /// Returns a Result indicating success or failure
-pub async fn authenticate_with_ecr(client: &Client) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn authenticate_with_ecr(account_id: &str, region: &str) -> Result<(), Box<dyn std::error::Error>> {
     println!("Starting ECR authentication process...");
-
-    let region = client.config().region().ok_or("Region not found")?.to_string();
-    println!("Using region: {}", region);
-
-    let account_id = get_account_id(client).await?;
-    println!("Retrieved account ID: {}", account_id);
 
     let account_url = format!("{}.dkr.ecr.{}.amazonaws.com", account_id, region);
 
@@ -97,18 +92,3 @@ pub async fn authenticate_with_ecr(client: &Client) -> Result<(), Box<dyn std::e
     Ok(())
 }
 
-/// Gets the AWS account ID
-///
-/// # Arguments
-///
-/// * `client` - The AWS ECR client
-///
-/// # Returns
-///
-/// Returns a Result with the account ID or an error
-async fn get_account_id(client: &Client) -> Result<String, Box<dyn std::error::Error>> {
-    let result = client.describe_registry().send().await?;
-    result.registry_id()
-        .map(String::from)
-        .ok_or_else(|| "Failed to retrieve account ID".into())
-}

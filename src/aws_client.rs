@@ -36,3 +36,16 @@ pub async fn setup_aws_client_with_user_selection() -> Result<Client, Box<dyn st
     let selected_profile = Select::new("Select an AWS profile:", profiles).prompt()?;
     setup_aws_client(&selected_profile).await
 }
+
+/// Retrieves the AWS account ID using the ECR client
+pub async fn get_account_id(client: &Client) -> Result<String, Box<dyn std::error::Error>> {
+    let result = client.describe_registry().send().await?;
+    result.registry_id()
+        .map(String::from)
+        .ok_or_else(|| "Failed to retrieve account ID".into())
+}
+
+/// Retrieves the configured region from the AWS client configuration
+pub fn get_region(client: &Client) -> Result<String, Box<dyn std::error::Error>> {
+    client.config().region().map(|r| r.to_string()).ok_or_else(|| "Region not found".into())
+}
