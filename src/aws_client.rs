@@ -26,15 +26,16 @@ pub async fn setup_aws_client(profile: &str) -> Result<Client, Box<dyn std::erro
 ///
 /// # Returns
 ///
-/// Returns a Result with the AWS client or an error
-pub async fn setup_aws_client_with_user_selection() -> Result<Client, Box<dyn std::error::Error>> {
+/// Returns a Result with a tuple containing the AWS client and the selected profile name
+pub async fn setup_aws_client_with_user_selection() -> Result<(Client, String), Box<dyn std::error::Error>> {
     let profiles = get_profile_names()?;
     if profiles.is_empty() {
         return Err("No AWS profiles found".into());
     }
 
     let selected_profile = Select::new("Select an AWS profile:", profiles).prompt()?;
-    setup_aws_client(&selected_profile).await
+    let client = setup_aws_client(&selected_profile).await?;
+    Ok((client, selected_profile))
 }
 
 /// Retrieves the AWS account ID using the ECR client
