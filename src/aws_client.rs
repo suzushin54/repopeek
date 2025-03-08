@@ -2,7 +2,7 @@ use aws_config::BehaviorVersion;
 use aws_sdk_ecr::Client;
 use inquire::Select;
 use crate::aws_profile::get_profile_names;
-
+use std::future::Future;
 
 /// Sets up the AWS client with the specified profile
 ///
@@ -27,26 +27,32 @@ pub async fn setup_aws_client(profile: &str) -> Result<Client, Box<dyn std::erro
 /// # Returns
 ///
 /// Returns a Result with a tuple containing the AWS client and the selected profile name
-pub async fn setup_aws_client_with_user_selection() -> Result<(Client, String), Box<dyn std::error::Error>> {
-    let profiles = get_profile_names()?;
-    if profiles.is_empty() {
-        return Err("No AWS profiles found".into());
-    }
+pub fn setup_aws_client_with_user_selection() -> impl Future<Output = Result<(Client, String), Box<dyn std::error::Error>>> {
+    async move {
+        let profiles = get_profile_names()?;
+        if profiles.is_empty() {
+            return Err("No AWS profiles found".into());
+        }
 
-    let selected_profile = Select::new("Select an AWS profile:", profiles).prompt()?;
-    let client = setup_aws_client(&selected_profile).await?;
-    Ok((client, selected_profile))
+        let selected_profile = Select::new("Select an AWS profile:", profiles).prompt()?;
+        let client = setup_aws_client(&selected_profile).await?;
+        Ok((client, selected_profile))
+    }
 }
 
 /// Retrieves the AWS account ID using the ECR client
 pub async fn get_account_id(client: &Client) -> Result<String, Box<dyn std::error::Error>> {
     let result = client.describe_registry().send().await?;
-    result.registry_id()
-        .map(String::from)
-        .ok_or_else(|| "Failed to retrieve account ID".into())
+    let Some(registry_id) = result.registry_id() else {
+        return Err("Failed to retrieve account ID".into());
+    };
+    Ok(registry_id.to_string())
 }
 
 /// Retrieves the configured region from the AWS client configuration
 pub fn get_region(client: &Client) -> Result<String, Box<dyn std::error::Error>> {
-    client.config().region().map(|r| r.to_string()).ok_or_else(|| "Region not found".into())
+    let Some(region) = client.config().region() else {
+        return Err("Region not found".into());
+    };
+    Ok(region.to_string())
 }
