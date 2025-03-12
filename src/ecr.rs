@@ -67,11 +67,12 @@ pub async fn describe_images(client: &Client, repo_name: &str) -> Result<Vec<Ima
 ///
 /// * `account_id` - The AWS account ID
 /// * `region` - The AWS region
+/// * `profile` - The AWS profile name
 ///
 /// # Returns
 ///
 /// Returns a Result indicating success or failure
-pub async fn authenticate_with_ecr(account_id: &str, region: &str) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn authenticate_with_ecr(account_id: &str, region: &str, profile: &str) -> Result<(), Box<dyn std::error::Error>> {
     println!("Starting ECR authentication process...");
 
     let account_url = format!("{}.dkr.ecr.{}.amazonaws.com", account_id, region);
@@ -79,8 +80,8 @@ pub async fn authenticate_with_ecr(account_id: &str, region: &str) -> Result<(),
     let status = Command::new("sh")
         .arg("-c")
         .arg(format!(
-            "AWS_PROFILE=default aws ecr get-login-password --region {} | docker login --username AWS --password-stdin {}",
-            region, account_url
+            "AWS_PROFILE={} aws ecr get-login-password --region {} | docker login --username AWS --password-stdin {}",
+            profile, region, account_url
         ))
         .status()?;
 
