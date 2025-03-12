@@ -7,7 +7,6 @@ use inquire::Select;
 use crate::aws_client::setup_aws_client_with_user_selection;
 use ecr::{list_repositories, list_images_in_repository};
 
-
 /// Command-line interface for the application
 #[derive(StructOpt)]
 struct Cli {}
@@ -46,7 +45,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Prompt the user to select a repository
     let selected_repo_name = Select::new("Select a repository:", repo_names)
         .prompt()
-        .unwrap();
+        .map_err(|e| format!("Failed to select repository: {}", e))?;
 
     // List images in the selected repository
     let images = list_images_in_repository(&client, selected_repo_name).await?;
@@ -89,8 +88,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
-    let selected_image = Select::new("Select an image to pull:", image_options).prompt()?;
-    let selected_image_tag = selected_image.split('\t').next().unwrap().to_string();
+    let selected_image = Select::new("Select an image to pull:", image_options)
+        .prompt()
+        .map_err(|e| format!("Failed to select image: {}", e))?;
+    let selected_image_tag = selected_image.split('\t').next().unwrap_or_default().to_string();
 
     // Pull the selected image
     let docker_pull_command = format!(
@@ -99,11 +100,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     println!("Running command: {}", docker_pull_command);
-    std::process::Command::new("sh")
+    let status = std::process::Command::new("sh")
         .arg("-c")
         .arg(docker_pull_command)
         .status()
-        .expect("failed to execute docker pull command");
+        .map_err(|e| format!("Failed to execute docker pull command: {}", e))?;
+
+    if !status.success() {
+        return Err("Docker pull command failed".into());
+    }
 
     Ok(())
 }
