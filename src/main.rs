@@ -95,7 +95,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Pull the selected image
     let docker_pull_command = format!(
         "docker pull {}.dkr.ecr.{}.amazonaws.com/{}:{}",
-        selected_profile, aws_client::get_region(&client)?, selected_repo_name, selected_image_tag
+        account_id, aws_client::get_region(&client)?, selected_repo_name, selected_image_tag
     );
 
     println!("Running command: {}", docker_pull_command);
