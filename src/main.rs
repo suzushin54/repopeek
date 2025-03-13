@@ -27,11 +27,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (client, selected_profile) = setup_aws_client_with_user_selection().await?;
 
     // Get AWS account ID and region
-    let account_id = aws_client::get_account_id(&client).await?;
+    let account_id = match aws_client::get_account_id(&client).await {
+        Ok(id) => id,
+        Err(e) => {
+            if let Some(source) = e.source() {
+                if let Some(err_source) = source.source() {
+                    eprintln!("{}", err_source);
+                } else {
+                    eprintln!("{}", source);
+                }
+            } else {
+                eprintln!("{}", e);
+            }
+            return Ok(());
+        }
+    };
+    
     let region = aws_client::get_region(&client)?;
 
     // Docker login for private repository
-    ecr::authenticate_with_ecr(&account_id, &region, &selected_profile).await?;
+    if let Err(e) = ecr::authenticate_with_ecr(&account_id, &region, &selected_profile).await {
+        eprintln!("ECR Authentication Failed");
+        eprintln!("Details: {}", e);
+        return Ok(());
+    }
 
     let repositories = list_repositories(&client).await?;
     if repositories.is_empty() {
