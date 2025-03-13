@@ -30,8 +30,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let account_id = match aws_client::get_account_id(&client).await {
         Ok(id) => id,
         Err(e) => {
-            if let Some(err) = e.source() {
-                eprintln!("{}", err);
+            if let Some(source) = e.source() {
+                if let Some(err_source) = source.source() {
+                    eprintln!("{}", err_source);
+                } else {
+                    eprintln!("{}", source);
+                }
             } else {
                 eprintln!("{}", e);
             }
