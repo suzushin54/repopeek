@@ -55,10 +55,34 @@ pub async fn list_images_in_repository(client: &Client, repo_name: &str) -> Resu
 pub async fn describe_images(client: &Client, repo_name: &str) -> Result<Vec<ImageDetail>, Error> {
     let result = client.describe_images()
         .repository_name(repo_name)
+        .max_results(100)  
         .send()
         .await?;
-
-    Ok(result.image_details().to_vec())
+    
+    // Convert Option<&[ImageDetail]> to Vec<ImageDetail>
+    let mut image_details = result.image_details().to_vec();
+    
+    // Sort by pushed date (newest first)
+    image_details.sort_by(|a, b| {
+        let a_date = a.image_pushed_at();
+        let b_date = b.image_pushed_at();
+        
+        match (b_date, a_date) {
+            (Some(b_dt), Some(a_dt)) => b_dt.cmp(&a_dt), 
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (None, None) => std::cmp::Ordering::Equal,
+        }
+    });
+    
+    // Take only the latest 30 images
+    let latest_images = if image_details.len() > 30 {
+        image_details[0..30].to_vec()
+    } else {
+        image_details
+    };
+    
+    Ok(latest_images)
 }
 
 /// Authenticates with AWS ECR
